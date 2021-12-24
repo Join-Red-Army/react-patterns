@@ -13,7 +13,8 @@ export default class PersonDetails extends Component {
   state = {
     person: null,
     loading: false,
-    hasError: false
+    // hasError: false
+    // ошибки обрабатывает обёртка ErrorBoundry
   }
 
   componentDidMount() {
@@ -26,9 +27,10 @@ export default class PersonDetails extends Component {
     }
   }
 
-  componentDidCatch() {
-    this.setState({ hasError: true });
-  }
+  // componentDidCatch() {
+  //   this.setState({ hasError: true });
+  // } 
+  // ошибки обрабатывает обёртка ErrorBoundry
 
   updatePerson() {
     const { personId } = this.props;
@@ -48,10 +50,12 @@ export default class PersonDetails extends Component {
 
   render() {
     const { person, loading, hasError } = this.state;
+    //const { person, loading, hasError } = this.state;
 
-    if (hasError) {
-      return <ErrorIndicator />
-    }
+    // if (hasError) {
+    //   return <ErrorIndicator />
+    // }
+    // ошибки обрабатывает обёртка ErrorBoundry
 
     const hasData = (!loading && person);
 

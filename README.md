@@ -317,8 +317,130 @@ render() {
 Для приложения можно создать также другие элементы-контейнеры, чтобы переиспользовать блоки html и css. Например, вместо random-planet можно сделать элемент-контейнер, который будет заниматься не только планетами.
 
 
+## Children + ErrorBoundry
+Документация по API Children тут: https://reactjs.org/docs/react-api.html#reactchildren.
+
+Есть 2 способа передавать свойства компонентам (равнозначны):
+- передавать пары ключ-значения, похожие на атрибуты в html;
+- записать что-то в тело компонента.
+
+
 ```js
+<Component>
+  Hello, {[1, 2, 4]}
+</Component>
 ```
+
+Сейчас в файле people-page.js компонент ItemList получает рендер функцию так:
+```js
+// people-page.js 
+<ItemList
+  onItemSelected={this.onPersonSelected}
+  getData={this.swapiService.getAllPeople}
+  renderItem={({name, gender, birthYear}) => `${name} (${gender}, ${birthYear})`}
+/>
+```
+
+Поскольку рендер-функция отвечает за то, что будет выведено на экран, её можно передать в теле компонента. Деструктуризации больше нет, чтобы всё было более читаемо. 
+```js
+// people-page.js
+
+const itemList = (
+  <ItemList
+    onItemSelected={this.onPersonSelected}
+    getData={this.swapiService.getAllPeople}
+  >
+    {(i) => (
+      `${i.name}, (${i.birthYear})` // вот тут
+    )}
+        
+  </ItemList>
+);
+```
+
+Теперь надо сделать так, чтобы сам компонент ItemList мог получить доступ к содержимому тела. Доступ к такой информации можно получить через this.props.children.
+.children работает только в том случае, если из компонента App удалить разметку, которая «не компонент» и создаёт другие пары: корабли и планеты. См. ответ здесь.
+
+Было:
+```js
+renderItems(arr) {
+  return arr.map((item) => {
+    const { id } = item;
+    const label = this.props.renderItem(item);
+```
+
+Стало:
+```js
+renderItems(arr) {
+  return arr.map((item) => {
+    const { id } = item;
+    const label = this.props.children(item);
+```
+
+
+**ErrorBoundry**
+С помощью children можно передавать дерево компонентов. Предлагается выделить в отдельный компонент ErrorBoundry. Он будет заниматься выскакивающей ошибкой. Компонент может получить один или несколько элементов в качестве children и он отрендерит их точно в таком виде, в котором получил.
+
+Из компонента people-page переезжают в отдельный компонент ErrorBoundry:
+- метод жизненного цикла componentDidCatch
+- hasError из стейта.
+
+В компоненте ErrorBoundry поступаем так же, как обычно при обработке ошибок. Этот компонент будет решать, что ему возвращать: компонент-ошибку или props.children.
+В такой компонент можно обернуть любой другой компонент и ErrorBoundry автоматом будет отлавливать все ошибки, которые происходят в его children.
+
+В примере ниже в ErrorBoundry можно обернуть компонент Row целиком и/или PersonDetails и удалить из этих компонентов их собственные обработчики ошибок. Компонент-обёртка ErrorBoundry будет отлавливать всё.
+```js
+// error-boundry.js
+class ErrorBoundry extends Component {
+  state = {
+    hasError: false
+  };
+
+  componentDidCatch() {
+    this.setState({
+      hasError: true
+    });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorIndicator />
+    }
+
+    return this.props.children;
+  };
+};
+
+
+// people-page.js
+  render() {
+
+    const itemList = (
+      <ItemList
+        onItemSelected={this.onPersonSelected}
+        getData={this.swapiService.getAllPeople}
+      >
+        {(i) => (
+          `${i.name}, (${i.birthYear})`
+        )}
+        
+      </ItemList>
+    );
+
+    const personDetails = (
+      <ErrorBoundry>
+        <PersonDetails personId={this.state.selectedPerson} />
+      </ErrorBoundry>
+    );
+
+    return (
+      <ErrorBoundry>
+        <Row left={itemList} right={personDetails} />
+      </ErrorBoundry>
+    );
+  }
+```
+
 
 ```js
 ```
