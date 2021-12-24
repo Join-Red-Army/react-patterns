@@ -1,0 +1,14 @@
+.app {
+  margin: 0 30px;
+}
+
+.toggle-planet {
+  margin-right: 1rem;
+}
+
+.buttons {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+}
