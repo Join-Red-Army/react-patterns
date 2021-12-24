@@ -7,6 +7,7 @@ import PersonDetails from '../person-details';
 import ErrorButton from '../error-button';
 import './app.css';
 import ErrorIndicator from '../error-indicator';
+import PeoplePage from '../people-page/people-page';
 
 export default class App extends Component {
 
@@ -59,6 +60,8 @@ export default class App extends Component {
 
         <ErrorButton />
       </div>
+
+      <PeoplePage />
 
       <div className="row mb2">
         <div className="col-md-6">
