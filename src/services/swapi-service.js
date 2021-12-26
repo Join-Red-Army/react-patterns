@@ -2,6 +2,7 @@
 export default class SwapiService {
 
   _apiBase = 'https://swapi.dev/api';
+  _imageBase = 'https://starwars-visualguide.com/assets/img';
   // _apiBase = `https://swapi.py4e.com/api`;
   // _apiBase = 'https://www.swapi.tech/api';
 
@@ -43,6 +44,19 @@ export default class SwapiService {
     const starship = await this.getResourse(`/starships/${id}`);
     return this._transformStarship(starship);
   }
+
+
+  getPersonImage = ({id}) => {
+    return `${this._imageBase}/characters/${id}.jpg`
+  };
+
+  getStarshipImage = ({id}) => {
+    return `${this._imageBase}/starships/${id}.jpg`
+  };
+
+  getPlanetImage = ({id}) => {
+    return `${this._imageBase}/planets/${id}.jpg`
+  };
 
 
   _extractId = (item) => {
