@@ -441,6 +441,154 @@ class ErrorBoundry extends Component {
   }
 ```
 
+## рефакторинг компонента person-details.js в item-details
+Файл person-details.js и все person-переменные переименовываются в item-details.js и item соответственно.
+
+Поскольку item-details должен работать с любыми данными, наружу в пропсы выносятся некоторые функции.
+В State добавляется поле image, чтобы хранить «универсальное» изображение, которое туда записывается после загрузки данных:
+```js
+//app.js
+  const { getPerson, getStarship } = this.swapiService;
+    
+  const personDetails = ( <ItemDetails 
+    itemId={11} 
+    getData={getPerson} 
+    getImageUrl={}/> );
+  
+    const starshipDetails = ( <ItemDetails 
+    itemId={5} 
+    getData={getStarship} 
+    getImageUrl={}/> );
+
+
+//item-details.js
+  state = {
+    item: null,
+    loading: false,
+    image: null
+  }
+
+  getData(itemId)
+    .then((item) => {
+      this.setState({ item, loading: false, image: getImageUrl(item) });
+    });
+```
+
+В Swapi-Service добавляются функции для получения изображений персонажей, кораблей и планет. Эти функции будут передаваться в item-details как пропсы для получения того или иного изображения:
+```js
+//swapi-service.js
+  _imageBase = 'https://starwars-visualguide.com/assets/img';
+
+  getPersonImage = ({id}) => {
+    return `${this._imageBase}/characters/${id}.jpg`
+  };
+
+  getStarshipImage = ({id}) => {
+    return `${this._imageBase}/starships/${id}.jpg`
+  };
+
+  getPlanetImage = ({id}) => {
+    return `${this._imageBase}/planets/${id}.jpg`
+  };
+```
+
+## Работа с props.children API
+Сейчас компонент item-details хорошо работает только с персонажами, потому что у кораблей нет полей «возраст», «цвет глаз» и т.д., а Gener, Birth Year и Eye Color захардкожены. Эти значения надо вынести наружу и сделать так, чтобы компонент можно было конфигурировать.
+
+Решить задачу можно несколькими способами.
+Например, передавать в пропсы объект с конфигурацией типа fields = {[ {field: 'gender', label:' Gender'} ]}. Такой код – не в духе React (Юра говорит), потому что не соблюдается принцип компонентности.
+
+Надо знать наименование полей объекта и сам объект с данными. Это можно реализовать с функцией Record, которая будет создавать li-элементы. Её параметры: item – сам элемент, field – поле, которое надо достать из объекта и  label – запись на ui.
+
+Было (захардкожено и заточено под конкретные данные):
+```js
+<ul className="list-group list-group-flush">
+
+  <li className="list-group-item">
+    <span className="term">Gender</span>  // здесь
+    <span>{gender}</span>  // здесь
+  </li>
+
+  <li className="list-group-item">
+    <span className="term">Birth Year</span>  // здесь
+    <span>{birthYear}</span>  // здесь
+  </li>
+
+</ul>
+```
+
+Стало (пока добавить в этот файл функцию record):
+```js
+// item-details.js
+const Record = ({item, field, label}) => {
+  return (
+    <li className="list-group-item">
+    <span className="term">{label}</span>
+    <span>{ item[field] }</span>
+  </li>
+  );
+};
+
+export { Record };
+
+
+// app.js
+import ItemDetails, { Record } from '../item-details';
+
+    const personDetails = ( 
+      <ItemDetails 
+        itemId={11} 
+        getData={getPerson} 
+        getImageUrl={getPersonImage}
+          >
+          <Record field='gender' label='Gender' />
+          <Record field='eyeColor' label='Eye Color' />
+      </ItemDetails> );
+```
+
+Это не всё «стало», продолжение ниже.
+
+**API Children**
+Чтобы Record заработал, ему надо знать item, из которого он будет доставать все эти данные. Т.е. сейчас можно достать детей (функции Record) и вывести их на экран их содержимое через {  this.props.children }, но нужно как-то обратиться к родительскому объекту, чтобы получить доступ к его полям. Так, например, item и item[field] пока не доступны.
+
+Для работы с детьми есть специальный API Children, документация по нему тут.
+Дело в том, что children может быть строкой, элементом, числом, чем угодно. Функция React.children.map сделает так, чтобы не надо было задумываться, какого именно типа child сейчас попался, он пройдётся по каждому child и обработает все специальные случаи типа null или undefined. Можно заменять и обрабатывать child-элементы как угодно, можно возвращать вместо них null и тем самым скрывать, можно оборачивать… не обязательно возвращать их в том виде, как они поступают.
+
+В данном случае, в каждый child надо передать item.
+```js
+// item.details, class ItemDetails на том месте, где было захардкожено
+
+<div className="card-body">
+  <h4>{name}</h4>
+  <ul className="list-group list-group-flush">
+    {
+      React.Children.map(this.props.children, (child, idx) => {  // здесь 
+        return <li>{idx}</li>;
+      })
+    }
+  </ul>
+  <ErrorButton />
+</div>
+```
+Это не весь рефактор, сейчас пока он не работает правильно, потому что нет доступа к item, см. следующий раздел.
+
+## Клонирование элементов
+
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
 
 ```js
 ```

@@ -3,6 +3,17 @@ import Spinner from '../spinner';
 import ErrorButton from '../error-button';
 import './item-details.css';
 
+const Record = ({item, field, label}) => {
+  return (
+    <li className="list-group-item">
+    <span className="term">{label}</span>
+    <span>{ field }</span>
+  </li>
+  );
+};
+
+export { Record };
+
 
 export default class ItemDetails extends Component {
   state = {
@@ -38,55 +49,33 @@ export default class ItemDetails extends Component {
   }
 
   render() {
-    const { item, loading, image } = this.state;
+    const { name, item, loading, image } = this.state;
 
     const hasData = (!loading && item);
 
     const selectMessage = !item ? <span>Select a item from a list</span> : null;
     const spinner = loading ? <Spinner /> : null;
-    const personData = hasData ? PersonView(item, image) : null;
 
     return (
       <div className="item-details card">
         {selectMessage}
         {spinner}
-        {personData}
+        <img className="item-image"
+          src={image}
+          alt="item"/>
+
+        <div className="card-body">
+          <h4>{name}</h4>
+          <ul className="list-group list-group-flush">
+            {
+              React.Children.map(this.props.children, (child, idx) => {
+                return <li>{idx}</li>;
+              })
+            }
+          </ul>
+          <ErrorButton />
+        </div>
       </div>
     );
   }
 };
-
-
-const PersonView = (item, image) => {
-  const { name, gender, birthYear, eyeColor } = item;
-
-  return (
-    <React.Fragment>
-      <img className="item-image"
-          src={image}
-          alt="character"/>
-
-        <div className="card-body">
-          <h4>{name}</h4>
-
-          <ul className="list-group list-group-flush">
-            <li className="list-group-item">
-              <span className="term">Gender</span>
-              <span>{gender}</span>
-            </li>
-            <li className="list-group-item">
-              <span className="term">Birth Year</span>
-              <span>{birthYear}</span>
-            </li>
-            <li className="list-group-item">
-              <span className="term">Eye Color</span>
-              <span>{eyeColor}</span>
-            </li>
-          </ul>
-          <ErrorButton />
-
-        </div>
-    </React.Fragment>
-  )
-}
-

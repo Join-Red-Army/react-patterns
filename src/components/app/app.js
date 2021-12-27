@@ -3,13 +3,11 @@ import React, { Component } from 'react';
 import Header from '../header';
 import RandomPlanet from '../random-planet';
 import ItemList from '../item-list';
-import ItemDetails from '../item-details';
-import ErrorButton from '../error-button';
-import './app.css';
+import ItemDetails, { Record } from '../item-details';
 import ErrorIndicator from '../error-indicator';
-import PeoplePage from '../people-page/people-page';
 import SwapiService from '../../services/swapi-service';
 import Row from '../row';
+import './app.css';
 
 export default class App extends Component {
 
@@ -59,12 +57,18 @@ export default class App extends Component {
     const personDetails = ( <ItemDetails 
       itemId={11} 
       getData={getPerson} 
-      getImageUrl={getPersonImage}/> );
+      getImageUrl={getPersonImage}
+      >
+        <Record field='gender' label='Gender' />
+        <Record field='eyeColor' label='Eye Color' />
+      </ItemDetails> );
 
     const starshipDetails = ( <ItemDetails 
       itemId={5} 
       getData={getStarship} 
-      getImageUrl={getStarshipImage}/> );
+      getImageUrl={getStarshipImage}
+      >
+      </ItemDetails> );
 
     return (
     <div className='app'>
