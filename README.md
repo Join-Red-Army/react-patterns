@@ -573,13 +573,80 @@ import ItemDetails, { Record } from '../item-details';
 Это не весь рефактор, сейчас пока он не работает правильно, потому что нет доступа к item, см. следующий раздел.
 
 ## Клонирование элементов
+React.Children.map() позволяет проитерироваться по this.props.children и сделать что-нибудь с каждым child и вернуть что угодно. Есть одно правило: react-элементы нельзя изменять после того, как они были созданы, с ними надо работать так, будто они неизменяемые. Поэтому нельзя написать внутри map-функции child.item = item.
 
+Вместо этого надо создать новый элемент, в котором есть новое свойство item. Для этого есть ещё один метод: React.cloneElement(). Документация тут.
+Копирует и возвращает новый реакт-элемент.
+Config должен содержать все новые props, key или ref. Возвращаемый элемент будет иметь все старые + новые props. Новые children заменят существующих children.
 
 ```js
+React.cloneElement(element, [config], [...children])
+
+// Почти эквивалентно этому
+// <element.type {...element.props} {...props}>{children}</element.type>
 ```
 
+Вот итоговая реализация:
+Был создан дополнительный компонент **Record** (запись). 
+Ему необходимы 3 поля: «field», «label» и «item». Первые 2 передаются через app, а item нельзя сразу передать, потому что эти данные получаются внутри компонента ItemDetails и снаружи их получить никак нельзя. Внешний код ничего не знает о том, как создаётся объект item.
+
+Для того, чтобы всё-таки передать объект item в child-элементы ItemDetails, была осуществлена итерация по каждому child с помощью React.**Children**.map() и внутри каждый child был преобразован с помощью React.**cloneElement**(), с помощью которого элементу был передан готовый к этому времени item.
+
 ```js
+// app.js
+import ItemDetails, { Record } from '../item-details';
+    const personDetails = (
+      <ItemDetails 
+        itemId={11} 
+        getData={getPerson} 
+        getImageUrl={getPersonImage}
+      >
+        <Record field='name' label='Name' />
+        <Record field='gender' label='Gender' />
+        <Record field='eyeColor' label='Eye Color' />
+      </ItemDetails> );
+
+
+
+// item-details.js
+const Record = ({item, field, label}) => {
+  return (
+    <li className="list-group-item">
+    <span className="term">{label}</span>
+    <span>{ item[field] }</span>
+  </li>
+  );
+};
+
+
+export default class ItemDetails extends Component {
+…state = {
+    item: null,  // item изначально нет, его надо запросить по сети
+    loading: false,
+    image: null
+  }
+
+  updateItem() {
+    …getData(itemId)
+      .then((item) => {
+        this.setState({ item, loading: false, image: getImageUrl(item) }); // тут получается item
+      });
+  }
+
+  render() {
+    const { name, item, loading, image } = this.state;  // item достаётся из state
+    …return (
+       …<ul className="list-group list-group-flush">
+          {
+            React.Children.map(this.props.children, (child) => {  // вот тут вся соль
+              return React.cloneElement(child, {item});
+            })
+          }
+        </ul>
 ```
+
+## Компоненты высшего порядка (HOC)
+
 
 ```js
 ```

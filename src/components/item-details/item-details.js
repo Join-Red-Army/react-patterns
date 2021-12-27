@@ -7,11 +7,10 @@ const Record = ({item, field, label}) => {
   return (
     <li className="list-group-item">
     <span className="term">{label}</span>
-    <span>{ field }</span>
+    <span>{ item[field] }</span>
   </li>
   );
 };
-
 export { Record };
 
 
@@ -51,15 +50,12 @@ export default class ItemDetails extends Component {
   render() {
     const { name, item, loading, image } = this.state;
 
-    const hasData = (!loading && item);
-
-    const selectMessage = !item ? <span>Select a item from a list</span> : null;
-    const spinner = loading ? <Spinner /> : null;
+    if (loading) return <Spinner />;
+    if  (!item) return (<span>Select a item from a list</span>);
 
     return (
       <div className="item-details card">
-        {selectMessage}
-        {spinner}
+
         <img className="item-image"
           src={image}
           alt="item"/>
@@ -68,8 +64,8 @@ export default class ItemDetails extends Component {
           <h4>{name}</h4>
           <ul className="list-group list-group-flush">
             {
-              React.Children.map(this.props.children, (child, idx) => {
-                return <li>{idx}</li>;
+              React.Children.map(this.props.children, (child) => {
+                return React.cloneElement(child, {item});
               })
             }
           </ul>
