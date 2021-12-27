@@ -54,16 +54,26 @@ export default class App extends Component {
       getPersonImage,
       getStarshipImage } = this.swapiService;
 
-    const personDetails = (
-      <ItemDetails 
-        itemId={11} 
-        getData={getPerson} 
-        getImageUrl={getPersonImage}
-      >
-        <Record field='name' label='Name' />
-        <Record field='gender' label='Gender' />
-        <Record field='eyeColor' label='Eye Color' />
-      </ItemDetails> );
+    // const personDetails = (
+    //   <ItemDetails 
+    //     itemId={11} 
+    //     getData={getPerson} 
+    //     getImageUrl={getPersonImage}
+    //   >
+    //     <Record field='name' label='Name' />
+    //     <Record field='gender' label='Gender' />
+    //     <Record field='eyeColor' label='Eye Color' />
+    //   </ItemDetails> );
+
+const list = 
+<ItemList
+  onItemSelected={this.onPersonSelected}
+  getData={this.swapiService.getAllPeople}
+>
+  { ({name}) => <span>{name}</span> }
+</ItemList>
+
+
 
     const starshipDetails = (
       <ItemDetails 
@@ -81,7 +91,7 @@ export default class App extends Component {
       <Header />
 
       <Row
-        left={personDetails}
+        left={list}
         right={starshipDetails} 
       />
  

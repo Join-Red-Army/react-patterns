@@ -646,7 +646,316 @@ export default class ItemDetails extends Component {
 ```
 
 ## Компоненты высшего порядка (HOC)
+Работа с itemList (списко персонажей, кораблей и т.д.).
+Как у любого другого сетевого компонента, его работа состоит из нескольких фаз:
+1. В componentDidMount() делаем запрос, получаем данные, обновляем state.
+2. В render() проверяем, если есть данные, то их отображаем. Если данных нет – отображаем спиннер.
 
+Чтобы создать новый сетевой компонент, не обязательно копировать весь этот код (который отправляет запрос, проверяет наличие данных, обновляет state, отображает спиннер, ошибку и т.д.). На самом деле, меняются только 2 аспекта: как делается запрос и как отображается результат на экране.
+
+Чтобы сделать этот код лучше, существует паттерн HOC.
+
+Цель – вынести сетевой код, отображение данных и ошибку в отдельную конструкцию и переиспользовать с другими компонентами.
+
+В JS функция может возвращать другую функцию и/или класс.
+Вместо экспорта класса, можно экспортировать функцию (её вызов), которая возвращает класс.
+```js
+// возврат функции
+const f = (a) => {
+  return (b) => {
+    console.log(a + b);
+  }
+};
+f(1)(2);
+
+
+// возврат класса
+const f = () => {
+  return ItemList;
+};
+
+export default f();
+```
+
+В JS можно создавать безымянные функции и безымянные классы. Таким оразом будет возвращён новый класс, у которого нет имени, но есть содержимое. В примере ниже возвращается анонимный класс, который наследует Component и у него есть функция render():
+```js
+const f = () => {
+  return class extends Component {
+    render() {
+      return <p>Hi</p>
+    }
+  };
+};
+
+export default f();
+```
+
+Поскольку внутренний анонимный класс – это компонент, значит в него можно передать componentDidMount() или любую другую функцию жизненного цикла:
+```js
+const f = () => {
+  return class extends Component {
+
+    componentDidMount() {
+      console.log(this.props);
+    }
+
+    render() {
+      return <p>Hi</p>
+    }
+  };
+};
+
+export default f();
+```
+
+Поскольку возврат функции (а функция возвращает анонимный класс) экспортируется под именем ItemList (переименование происходит в index.js, тут я её называю anonim), то она получает все пропсы (в т.ч. children), которые в неё передаются в App (выведутся в консоль), а именно:
+```js
+<AnonimItemList
+  onItemSelected={this.onPersonSelected}
+  getData={this.swapiService.getAllPeople}
+>
+
+  { ({name}) => <span>{name}</span> }
+
+</ AnonimItemList >
+```
+
+Следующий шаг – сделать полноценный компонент-класс <ItemList>, в этом же файле создать функцию высшего порядка, которая будет брать на себя все рассчёты и запросы, а возвратит компонент-класс <ItemList> и «напихает» ему уже полученных пропсов.
+
+В примере ниже создана обёртка, которая не делает ничего. Она получает пропсы, как в примере выше, и возвращает класс <ItemList/> и передаёт ему свои пропсы. Всё будет работать, как и раньше:
+```js
+class ItemList extends Component {
+  …объявление класса
+}
+
+const f = () => {
+  return class extends Component {
+
+    render() {
+      return <ItemList {...this.props} />;
+    }
+  };
+};
+export default f();
+
+
+app.js
+const list = <ItemList
+  onItemSelected={this.onPersonSelected}
+  getData={this.swapiService.getAllPeople}
+>
+  { ({name}) => <span>{name}</span> }
+</ItemList>
+```
+
+
+**HOC**
+Финальный шаг – вынести в обёртку всю логику из оригинального компонента:
+- работа с сетью
+- спиннер
+- ошибка
+- что отображать по клику
+
+State, componentDidMount, логика спиннера и данные пеерезжают из компонента в обёртку. Переменная itemList переименовывается на data.
+```js
+// item-list.js
+
+// компонент, который надо вернуть
+class ItemList extends Component {
+  renderItems(arr) {
+    return arr.map((item) => {
+      const { id } = item;
+      const label = this.props.children(item);
+      return (
+        <li 
+          className="list-group-item"
+          key={id}
+          onClick={() => this.props.onItemSelected(id)}
+        >
+          {label}
+        </li>
+      );
+    });
+  }
+
+  render() {
+    const { data } = this.props;
+    const items = this.renderItems(data);
+
+    return (
+      <ul className="item-list list-group">
+        {items}
+      </ul>
+    );
+  }
+}
+
+
+// возврат класса
+const f = () => {
+  return class extends Component {
+
+    state = { data: null };
+  
+    componentDidMount() {
+      const { getData } = this.props;
+
+      getData()
+        .then((data) => {
+          this.setState({
+            data
+          });
+      });
+    }
+
+    render() {
+      const { data } = this.state;
+      if (!data) return <Spinner />;
+  
+      return <ItemList {...this.props} data={data} />;
+    };
+  };
+};
+
+export default f();
+
+
+// app.js
+import ItemList from '../item-list';
+
+<ItemList
+  onItemSelected={this.onPersonSelected}
+  getData={this.swapiService.getAllPeople}
+>
+  { ({name}) => <span>{name}</span> }
+</ItemList>
+```
+
+Единственная зависимость, которая осталась – компонент знает, что работает с ItemList и заточен под него.
+В функцию f можно передать аргумент, который будет являться совершенно любым компонентом вместо ItemList.
+F переименована в withData чтобы было понятно, что она делает.
+```js
+const withData = (View) => {
+  return class extends Component {
+
+    state = { data: null };
+  
+    componentDidMount() {
+      const { getData } = this.props;
+
+      getData()
+        .then((data) => {
+          this.setState({
+            data
+          });
+      });
+    }
+
+    render() {
+
+      const { data } = this.state;
+      if (!data) return <Spinner />;
+  
+      return <View {...this.props} data={data} />;
+    };
+  };
+};
+
+export default withData(ItemList);
+```
+
+Таким образом, ItemList разделён на 2 части. Одна отвечает только за отрисовку, а вторая – за логику работы с сетью. Функция нужна для того, чтобы можно было выбирать (передавать в её параметр), какой именно компонент будет заниматься отображением данных.
+
+Следующий шаг: поскольку itemList не содержит state, из него можно сделать компонент-функцию.
+Обёртка больше не получает GetData в пропсах, теперь это делается явно при экспорте.
+Поскольку логика и отрисовка больше не связаны друг с другом, можно раскидать их по разным файлам.
+
+**Итоговая реализация** (ErrorIndicator пока не прикручен):
+
+item-list.js
+```js
+import React from 'react';
+import SwapiService from '../../services/swapi-service';
+import { withData } from '../hoc-helpers/';
+import './item-list.css';
+
+
+const ItemList = (props) => {
+
+  const { data, onItemSelected, children: renderLabel } = props;
+
+  const items = data.map((item) => {
+    const {id} = item;
+    const label = renderLabel(item);
+    return (
+      <li 
+        className="list-group-item"
+        key={id}
+        onClick={() => onItemSelected(id)}
+      >
+        {label}
+      </li>
+    );
+  });
+
+  return (
+    <ul className="item-list list-group">
+      {items}
+    </ul>
+  );
+};
+
+const { getAllPeople } = new SwapiService();
+
+export default withData(ItemList, getAllPeople);
+```
+
+with-data.js
+```js
+import React, { Component } from 'react';
+import Spinner from '../spinner';
+import ErrorIndicator from '../error-indicator';
+
+const withData = (View, getData) => {
+  return class extends Component {
+    
+    state = { data: null };
+
+    componentDidMount() {
+      getData()
+        .then((data) => {
+          this.setState({ data });
+      });
+    }
+
+    render() {
+      const { data } = this.state;
+
+      if (!data) return <Spinner />;
+  
+      return <View {...this.props} data={data} />;
+    };
+  };
+};
+
+export default withData;
+```
+
+app.js
+```js
+<ItemList
+  onItemSelected={this.onPersonSelected}
+  getData={this.swapiService.getAllPeople}
+>
+  { ({name}) => <span>{name}</span> }
+</ItemList>
+```
+
+```js
+```
+
+```js
+```
 
 ```js
 ```
