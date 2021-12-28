@@ -951,6 +951,147 @@ app.js
 </ItemList>
 ```
 
+## Рефакторинг, вынос больших компонентов
+Если компонент гибкий с т.з. настройки, то он начинет разрастаться в объёме и его сложно читать в общем потоке кода: очень много конфигурационных параметров. Хорошее решение – вынести такие компоненты с раздутой конфигурацией в отдельные файлы и затем импортировать их.
+
+В папке sw-components хранятся новые компоненты: item-lists.js и details.js
+
+Последние 2 строчки в ItemList удалить, экспортировать только сам ItemList
+```js
+// item-list.js
+// Было
+const { getAllPeople } = new SwapiService();
+export default withData(ItemList, getAllPeople);
+
+// Стало
+export default ItemList;
+```
+
+item-lists.js
+```js
+// import React from 'react';
+// import ItemList from '../item-list';
+// import { withData } from '../hoc-helpers';
+// import SwapiService from '../../services/swapi-service';
+
+const swapiService = new SwapiService();
+const { getAllPeople, getAllStarships, getAllPlanets } = swapiService;
+
+const PersonList = withData(ItemList, getAllPeople);
+const PlanetList = withData(ItemList, getAllPlanets);
+const StarshipList = withData(ItemList, getAllStarships);
+
+// export { PersonList, PlanetList, StarshipList };
+```
+
+details.js (не используется HOC, потом упаковать)
+```js
+// import Rect from 'react';
+// import ItemDetails, { Record } from '../item-details';
+// import SwapiService from '../../services/swapi-service';
+
+const swapiService = new SwapiService();
+const {
+  getPerson, getStarship, getPlanet,
+  getPersonImage, getStarshipImage, getPlanetImage 
+} = swapiService;
+
+const PersonDetails = ({ itemId }) => {
+  return (
+    <ItemDetails itemId={itemId} getData={getPerson} getImageUrl={getPersonImage}>
+      <Record field='gender' label='Gender' />
+      <Record field='eyeColor' label='Eye Color' />
+    </ItemDetails>
+  );
+};
+
+const PlanetDetails = ({ itemId }) => {
+  return (
+    <ItemDetails itemId={itemId} getData={getPlanet} getImageUrl={getPlanetImage}>
+      <Record field='popelation' label='Population' />
+      <Record field='diameter' label='Diameter' />
+    </ItemDetails>
+  );
+};
+
+const StarshipDetails = ({ itemId }) => {
+  return (
+    <ItemDetails itemId={itemId} getData={getStarship} getImageUrl={getStarshipImage}>
+      <Record field='model' label='Model' />
+      <Record field='length' label='Length' />
+    </ItemDetails>
+  );
+};
+
+// export { PersonDetails, PlanetDetails, StarshipDetails };
+```
+
+Использование в App.js
+```js
+return (
+<div className='app'>
+  <Header />
+
+  <PersonDetails   itemId={11} />
+  <PlanetDetails   itemId={5} />
+  <StarshipDetails itemId={9} />
+
+  <PersonList>
+    { ({name}) => <span>{name}</span> }</PersonList>
+      
+  <StarshipList>
+    { ({name}) => <span>{name}</span> }</StarshipList>
+      
+  <PlanetList>
+    { ({name}) => <span>{name}</span> }</PlanetList>
+</div>
+```
+
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+
 ```js
 ```
 
