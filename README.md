@@ -1047,12 +1047,67 @@ return (
 </div>
 ```
 
+## Композиция компонентов высшего порядка
+Композиция – применение одной функции к результату другой: f(g(x)).
+Композиция HOC – это использование одних HOC внутри других HOC.
 
+Сейчас в компоненты-листы всё ещё надо явно передавать children, в котором хранится рендер-функция. Чтобы от этого избавиться, можно использовать ещё одну функцию высшего порядка.
+
+Функция withChildFunction умеет брать любой компонент и вставлять ему что-то в качестве children.
+Wrapped – это компонент, который она будет оборачивать.
+fn – функция, которую надо передать в качестве props.children во Wrapped-компонент.
+
+Рендер-функции тоже могут быть разными.
+«renderName» и «renderModelAndName» немного отличаются и выводят на экран разный текст. 
 ```js
+import React from 'react';
+import ItemList from '../item-list';
+import { withData } from '../hoc-helpers';
+import SwapiService from '../../services/swapi-service';
+
+const swapiService = new SwapiService();
+const { getAllPeople, getAllStarships, getAllPlanets } = swapiService;
+
+
+// обернёт компонент и вставит ему детей
+const withChildFunction = (Wrapped, fn) => {
+  return (props) => {
+    return (
+      <Wrapped {...props}>
+        {fn}
+      </Wrapped>
+    );
+  }
+};
+
+// рендер-функции для персонажей и кораблей пойдут в children
+const renderName = ({ name }) => <span>{name}</span>;
+const renderModelAndName = ({ model, name }) => <span>{name} ({model})</span>
+
+// композиция функций высшего порядка
+const PersonList = withData(
+  withChildFunction(ItemList, renderName),
+  getAllPeople);
+
+const PlanetList = withData(
+  withChildFunction(ItemList, renderName), 
+  getAllPlanets);
+
+const StarshipList = withData(
+  withChildFunction(ItemList, renderModelAndName),
+  getAllStarships);
+
+export { PersonList, PlanetList, StarshipList };
 ```
 
+Использование в app.js
 ```js
+<PersonList />
+<StarshipList />
+<PlanetList />
 ```
+Теперь детали конфигурации скрыты. Использовать такие компоненты в разы легче.
+
 
 ```js
 ```
