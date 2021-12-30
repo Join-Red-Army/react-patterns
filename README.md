@@ -1109,36 +1109,201 @@ export { PersonList, PlanetList, StarshipList };
 Теперь детали конфигурации скрыты. Использовать такие компоненты в разы легче.
 
 
+## Контекст API
+Context API решает проблему проброса свойств (property drill) от компонентов верхнего уровня до компонентов нижнего.
+Контекст позволяет создать специальное хранилище данных и эти данные будут доступны для всех дочерних компонентов без необходимости явно передавать эти свойства.
+Гугли dependency injection.
+
+На практике вызывается функция, которая возвращает объект, в котором хранятся создаются 2 компонента: Provider и Consumer.
+
+Кратко:
 ```js
+import React from 'react';
+
+// 1. создать контекст через функцию (можно сразу деструктуризировать)
+const { Provider, Consumer } = React.createContext()
+
+
+// 2. Обернуть в Provider компоненты-потребители
+<SwapiServiceProvider value={this.swapiService}>      
+  <div className='app'>
+    <PersonList />
+    <StarshipList />
+    <PlanetList />
+  </div>
+</SwapiServiceProvider>
+
+
+// 3. Через Consumer вытащить переданное значение
+const PersonDetails = () => {
+  return (
+    <SwapiServiceConsumer>
+      {
+        (swapiService) => {
+          return (
+            <ItemDetails getData={swapiService.getPerson} />
+          );
+        }
+      }  
+    </SwapiServiceConsumer>
+  );
+};
 ```
 
+**createContext**
 ```js
+import React from 'react';
+
+const myContext = React.createContext(defaultValue)
+
+const { Provider, Consumer } = React.createContext()
+
+const { Provider : SwapiProvider, Consumer : SwapiConsumer } = React.createContext()
+```
+Функция возвращает объект контекста. 
+Этот объект можно сразу деструктуризировать на константы-компоненты Provider и Consumer.
+Provider – компонент, который хранит передаваемое значение
+Consumer – компонент, который будет потреблять это значение.
+
+Аргумент default будет использован только в том случае, если у компонента нет соответствующего Provider в иерархии над ним. Если Consumer не сможет найти никакого Provider, он будет использовать значение default.
+
+
+**Provider**
+Передаёт значение из своего пропса компонентам-потребителям.
+```js
+<MyContext.Provider value={someValue}>
 ```
 
+**Consumer**
+Считывает значение из Provider. Внутри содержит функцию, которая принимает на вход свойство-пропс из Provider, а возвращает любые компоненты, которые используют это переданное из provider свойство.
 ```js
+<ChildElement>
+  <Consumer>
+    {
+      (lang) => {
+        return (
+          <Chat lang={lang} />
+        )
+      }
+    }
+  </Consumer>
+</ChildElement>
 ```
 
+## Использование Context API
+С помощью контекста элементы смогут получать сервис, а не создавать каждый для себя его инстансы.
+Рефакториться будут details-элементы.
 
-```js
+Создаётся новая директория:
+```
+components
+  swapi-service-context
+    index.js
+    swapi-service-context.js
 ```
 
+Весь код – это создать Provider и Consumer и экспортировать их.
+При создании они сразу переименовываются в swapi-поставщик и swapi-потребитель.
 ```js
+// swapi-service-context.js
+import React from 'react';
+
+const { 
+  Provider : SwapiServiceProvider,
+  Consumer: SwapiServiceConsumer 
+} = React.createContext();
+
+export { SwapiServiceProvider, SwapiServiceConsumer };
 ```
 
+Теперь можно пойти в компонент самого высшего уровня и использовать контекст, чтобы у всех компонентов был доступ к тому значению, которое передаём:
 ```js
+// app.js
+import { SwapiServiceProvider } from '../swapi-service-context/swapi-service-context';
+
+return (
+  <ErrorBoundry>
+    <SwapiServiceProvider value={this.swapiService}>
+      
+      <div className='app'>
+        <Header />
+        <PersonDetails   itemId={11} />
+        <PlanetDetails   itemId={5} />
+        <StarshipDetails itemId={9} />
+        <PersonList />
+        <StarshipList />
+        <PlanetList />
+      </div>
+
+    </SwapiServiceProvider>
+  </ErrorBoundry>
+)};
 ```
 
+Теперь в details можно получить это значение.
+Импорт потребителя, обернуть в него элементы, которые ждут передаваемое значение. 
+Важный нюанс – потребитель передаёт значение как аргумент функции. Следовательно, он должен вернуть все оборачиваемые компоненты.
+
+Аргумент swapiService – это именно то значение, которое было передано в Provider по иерархии выше.
 ```js
+// .details.js.
+
+const PersonDetails = ({ itemId }) => {
+  return (
+    <SwapiServiceConsumer>
+      {
+        (swapiService) => {
+          return (
+            <ItemDetails 
+              itemId={itemId} 
+              getData={swapiService.getPerson} 
+              getImageUrl={swapiService.getPersonImage}
+            >
+            <Record field='gender' label='Gender' />
+            <Record field='eyeColor' label='Eye Color' />
+          </ItemDetails>
+          );
+        }
+      }  
+    </SwapiServiceConsumer>
+  );
+};
 ```
 
+Можно сразу же деструктуризировать:
 ```js
+<SwapiServiceConsumer>
+  {
+    // (swapiService) => {
+    ({getPerson, getPersonImage}) => {
+      return (
+        <ItemDetails 
+          itemId={itemId} 
+          getData={getPerson} 
+          getImageUrl={getPersonImage}
+        >
+        <Record field='gender' label='Gender' />
+        <Record field='eyeColor' label='Eye Color' />
+      </ItemDetails>
+      );
+    }
+  }  
+</SwapiServiceConsumer>
 ```
 
+То же самое проделать с кораблями и планетами и swapiService можно выпиливать из details.js.
+
+Теперь для того, чтобы изменить данные, которые запрашиваются по сети, на локальные тестовые данные, достаточно сделать так:
 ```js
+// app.js
+import DummySwapiService from '../../services/dummy-swapi-service';
+swapiService = new DummySwapiService();
 ```
 
-```js
-```
+Таким же макаром можно подменять данные, если сервис будет выдавать ошибку или долго грузиться.
+Сейчас этот код выглядит громоздко, но его можно улучшить с HOC.
+
+
 
 ```js
 ```

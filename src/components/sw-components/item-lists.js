@@ -18,7 +18,7 @@ const withChildFunction = (Wrapped, fn) => {
   }
 };
 
-// рендер-функции для персонажей и кораблей
+// рендер-функции для персонажей и кораблей пойдут в children
 const renderName = ({ name }) => <span>{name}</span>;
 const renderModelAndName = ({ model, name }) => <span>{name} ({model})</span>
 

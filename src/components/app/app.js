@@ -5,12 +5,15 @@ import RandomPlanet from '../random-planet';
 import ItemList from '../item-list';
 import ItemDetails, { Record } from '../item-details';
 import ErrorIndicator from '../error-indicator';
+import ErrorBoundry from '../error-boundry';
 import SwapiService from '../../services/swapi-service';
+import DummySwapiService from '../../services/dummy-swapi-service';
 import Row from '../row';
 import './app.css';
 import { 
   PersonDetails, StarshipDetails, PlanetDetails,
   PersonList, StarshipList, PlanetList } from '../sw-components';
+import { SwapiServiceProvider } from '../swapi-service-context/swapi-service-context';
 
 export default class App extends Component {
 
@@ -58,17 +61,22 @@ export default class App extends Component {
       getStarshipImage } = this.swapiService;
 
     return (
-    <div className='app'>
-      <Header />
+      <ErrorBoundry>
+        <SwapiServiceProvider value={this.swapiService}>
+          
+          <div className='app'>
+            <Header />
 
-      <PersonDetails   itemId={11} />
-      <PlanetDetails   itemId={5} />
-      <StarshipDetails itemId={9} />
+            <PersonDetails   itemId={11} />
+            <PlanetDetails   itemId={5} />
+            <StarshipDetails itemId={9} />
 
-      <PersonList />
-      <StarshipList />
-      <PlanetList />
- 
-    </div>
-  )};
+            <PersonList />
+            <StarshipList />
+            <PlanetList />
+          </div>
+
+        </SwapiServiceProvider>
+      </ErrorBoundry>
+    )};
 };
