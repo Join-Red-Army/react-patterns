@@ -1304,34 +1304,357 @@ swapiService = new DummySwapiService();
 Сейчас этот код выглядит громоздко, но его можно улучшить с HOC.
 
 
+## Использование HOC для работы с контекстом
+Details.js в каталоге sw-components надо разбить на 3 отдельных файла: PersonDetails, PlanetDetails, StarshipDetails.
 
+Задача получения контекста должна быть вынесена в компонент высшего порядка.
+В каталоге hoc-components создаётся компонент WithSwapiService. Вместо всего кода, который повторялся, можно использовать эту HOC-функцию.
 ```js
+// with-swapi-service.js
+import React from 'react';
+import { SwapiServiceConsumer } from '../swapi-service-context/';
+
+const withSwapiService = (Wrapped) => {
+
+  return (props) => {
+    return (
+      <SwapiServiceConsumer>
+        {
+          (swapiService) => {
+            return (
+              <Wrapped {...props} swapiService={swapiService} />
+            )
+          }
+        }
+      </SwapiServiceConsumer>
+    );
+  }
+};
+
+export default withSwapiService;
 ```
 
+В файле person-details.js можно удалить всё, что работает с контекстом, а экспорт обернуть в withSwapiService. Также, надо вытащить переданный HOC-ом в пропсы swapiService.
 ```js
+// person-details.js
+
+import React from 'react';
+import ItemDetails, { Record } from '../item-details';
+import { withSwapiService } from '../hoc-helpers';
+
+
+const PersonDetails = ({ itemId, swapiService }) => { 
+  const { getPerson, getPersonImage } = swapiService;
+
+  return (
+    <ItemDetails 
+      itemId={itemId} 
+      getData={getPerson} 
+      getImageUrl={getPersonImage}
+    >
+      <Record field='gender' label='Gender' />
+      <Record field='eyeColor' label='Eye Color' />
+  </ItemDetails>
+  );
+
+};
+
+export default withSwapiService(PersonDetails);
+```
+
+Таким образом, HOC взял на себя функцию «выплёвывания» wrapped-компонента и передачи ему в пропсы swapiService.
+
+
+## Трансформация props в компонентах HOC
+Вместо того, чтобы передавать весь swapiService в PersonDetails, можно туда передать исключительно те методы, которые нужны этому компоненту: getPerson и getPersonImage.
+Ещё лучше – если передать getPerson под именем getData, а getPersonImage – как getImageUrl, потому что именно с такими именами работают details-компоненты.
+
+Правила этой передачи проще всего описать функцией map.
+Эта функция должна использоваться в withSwapiService в качестве второго параметра для вычленения нужных данных.
+```js
+// Person-details.js
+
+import React from 'react';
+import ItemDetails, { Record } from '../item-details';
+import { withSwapiService } from '../hoc-helpers';
+
+
+// было
+const PersonDetails = ({ itemId, swapiService }) => {
+  const { getPerson, getPersonImage } = swapiService;
+
+  return (
+    <ItemDetails 
+      itemId={itemId} 
+      getData={getPerson} 
+      getImageUrl={getPersonImage}
+    >
+      <Record field='gender' label='Gender' />
+      <Record field='eyeColor' label='Eye Color' />
+  </ItemDetails>
+  );
+
+};
+
+const PersonDetails = ({ itemId, getData, getImageUrl }) => {
+
+  return (
+    <ItemDetails 
+      itemId={itemId} 
+      getData={getData} 
+      getImageUrl={getImageUrl}
+    >
+      <Record field='gender' label='Gender' />
+      <Record field='eyeColor' label='Eye Color' />
+  </ItemDetails>
+  );
+
+};
+
+
+const mapMethodsToProps = (swapiService) => {
+  return { 
+    getData: swapiService.getPerson,
+    getImageUrl: swapiService.getPersonImage
+  }
+};
+
+export default withSwapiService(PersonDetails, mapMethodsToProps);
+```
+
+Поскольку передаваемые пропсы теперь полностью соответствуют наименованию требуемых свойств, можно сократить их так:
+```js
+// Person-details.js
+
+import React from 'react';
+import ItemDetails, { Record } from '../item-details';
+import { withSwapiService } from '../hoc-helpers';
+
+const PersonDetails = (props) => {
+
+  return (
+    <ItemDetails ...props>
+      <Record field='gender' label='Gender' />
+      <Record field='eyeColor' label='Eye Color' />
+  </ItemDetails>
+  );
+
+};
+
+
+const mapMethodsToProps = (swapiService) => {
+  return { 
+    getData: swapiService.getPerson,
+    getImageUrl: swapiService.getPersonImage
+  }
+};
+
+export default withSwapiService(PersonDetails, mapMethodsToProps);
+```
+
+Переделка with-swapi-service.js под функцию map:
+```js
+// with-swapi-service.js
+
+import React from 'react';
+import { SwapiServiceConsumer } from '../swapi-service-context/';
+
+const withSwapiService = (Wrapped, mapMethodsToProps) => {
+
+  return (props) => {
+    return (
+      <SwapiServiceConsumer>
+        {
+          (swapiService) => {
+            const serviceProps = mapMethodsToProps(swapiService);
+
+            return (
+              <Wrapped {...props} {...serviceProps} />
+            );
+          }
+        }
+      </SwapiServiceConsumer>
+    );
+  }
+};
+
+export default withSwapiService;
 ```
 
 
+Теперь надо обновить list-компоненты. Сейчас они используют with-data.
+WithData вторым аргументом получал getData как внешний аргумент. Но withSwapiService уже умеет передавать нужные функции для запроса данных, поэтому getData больше не надо передавать в явном виде.
+Вместо этого можно взять getData из props.
+
+Было:
 ```js
+// with-data.js
+
+import React, { Component } from 'react';
+import Spinner from '../spinner';
+
+const withData = (View, getData) => {
+  return class extends Component {
+    
+    state = { data: null };
+
+    componentDidMount() {
+      getData()
+        .then((data) => {
+          this.setState({
+            data
+          });
+      });
+    }
+
+    render() {
+      const { data } = this.state;
+
+      if (!data) return <Spinner />;
+  
+      return <View {...this.props} data={data} />;
+    };
+  };
+};
+
+
+export default withData;
 ```
 
+Стало:
 ```js
+// with-data.js
+
+import React, { Component } from 'react';
+import Spinner from '../spinner';
+
+const withData = (View) => {
+  return class extends Component {
+    
+    state = { data: null };
+
+    componentDidMount() {
+      this.props.getData()
+        .then((data) => {
+          this.setState({
+            data
+          });
+      });
+    }
+
+    render() {
+      const { data } = this.state;
+
+      if (!data) return <Spinner />;
+  
+      return <View {...this.props} data={data} />;
+    };
+  };
+};
+
+
+export default withData;
 ```
 
+
+Обновление списков
+Было:
 ```js
+// item-lists.js
+
+import React from 'react';
+import ItemList from '../item-list';
+import SwapiService from '../../services/';
+
+// удаляется полностью
+// const swapiService = new SwapiService();
+// const { getAllPeople, getAllStarships, getAllPlanets } = swapiService;
+
+
+const withChildFunction = (Wrapped, fn) => {
+  return (props) => {
+    return (
+      <Wrapped {...props}>
+        {fn}
+      </Wrapped>
+    );
+  }
+};
+
+const renderName = ({ name }) => <span>{name}</span>;
+const renderModelAndName = ({ model, name }) => <span>{name} ({model})</span>
+
+const PersonList = withData(
+  withChildFunction(ItemList, renderName),
+  // getAllPeople); в явном виде не надо
+
+const PlanetList = withData(
+  withChildFunction(ItemList, renderName),
+  // getAllPlanets); в явном виде не надо
+
+const StarshipList = withData(
+  withChildFunction(ItemList, renderModelAndName),
+  // getAllStarships); в явном виде не надо
+
+export { PersonList, PlanetList, StarshipList };
 ```
 
+Стало:
 ```js
+item-lists.js
+
+import React from 'react';
+import ItemList from '../item-list';
+import { withData, withSwapiService } from '../hoc-helpers';
+
+
+// обернёт компонент и вставит ему детей
+const withChildFunction = (Wrapped, fn) => {
+  return (props) => {
+    return (
+      <Wrapped {...props}>
+        {fn}
+      </Wrapped>
+    );
+  }
+};
+
+// рендер-функции для персонажей и кораблей пойдут в children
+const renderName = ({ name }) => <span>{name}</span>;
+const renderModelAndName = ({ model, name }) => <span>{name} ({model})</span>
+
+const mapPersonMethodsToProps = (swapiService) => {
+  return { getData: swapiService.getAllPeople }
+};
+
+const mapPlanetMethodsToProps = (swapiService) => {
+  return { getData: swapiService.getAllPlanets}
+};
+
+const mapStarshipMethodsToProps = (swapiService) => {
+  return { getData: swapiService.getAllStarships }
+};
+
+// композиция функций высшего порядка
+const PersonList = withSwapiService(
+    withData(
+      withChildFunction(ItemList, renderName)),
+    mapPersonMethodsToProps);
+
+const PlanetList = withSwapiService(
+    withData(
+      withChildFunction(ItemList, renderName)), 
+    mapPlanetMethodsToProps);
+
+const StarshipList = withSwapiService(
+    withData(
+      withChildFunction(ItemList, renderModelAndName)),
+    mapStarshipMethodsToProps);
+
+
+export { PersonList, PlanetList, StarshipList };
 ```
 
-```js
-```
-
-```js
-```
-
-```js
-```
 
 ```js
 ```
