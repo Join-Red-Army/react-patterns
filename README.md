@@ -1656,6 +1656,95 @@ export { PersonList, PlanetList, StarshipList };
 ```
 
 
+## Обновление контекста
+Контекст не обязательно должен быть статичным, его можно обновлять «на лету». Он работает так же, как любые другие компоненты: если value обновилось, то компоненты ниже по иерархии получат обновлённое значение.
+Это может пригодиться, если приложение поддерживает смену языков, темы визуального оформления и т.д.
+
+Важно, что компоненты должны уметь правильно реагировать на изменение контекста. Обычно компоненты реагируют на изменения элементов, которые рендерятся на странице (например, новое значение строки). Надо прописать соответствующие условия в их componentDidUpdate, чтобы компоненты сравнивали предыдущие и новые функции получения (getData) данных из props. Ниже про это будет написано.
+
+Сейчас через контекст передаётся swapiService. Если залезть в App.js, то в нём можно переписать swapi на dummySwapi. Такое переключение можно реализовать через кнопку на странице, которая будет обновлять контекст.
+
+1. Объявить onServiceChange в app.js и передать его через пропсы в header.
+2. В header.js добавить кнопку, повесить на неё onServiceChange.
+
+Как реализовать смену значения в сервисе?
+Сейчас сервис – это просто поле класса и не находится в state. Если его обновить, то React не узнает, что приложение надо перерисовать. В этой связи, swapiService надо перенести в state и обновить код, который его использует.
+
+onServiceChange
+При переключении надо знать предыдущее значение state чтобы знать, на что переключиться. Поэтому в setState передаётся функция.
+```js
+// App.js
+state = {
+  showRandomPlanet: true,
+  swapiService: new SwapiService()
+};
+
+onServiceChange = () => {
+  this.setState(({ swapiService }) => {
+
+    const Service = swapiService instanceof SwapiService ? DummySwapiService : SwapiService;
+    return { swapiService: new Service() };
+  });
+}
+
+
+<SwapiServiceProvider value={this.state.swapiService}>
+
+<Header onServiceChange={this.onServiceChange} />
+```
+
+Если всё оставить в таком виде, то service действительно будет меняться, но компоненты не будут обновляться. Причина – компоненты обновляются только тогда, когда меняется их id. Поскольку нужно сохранить старый id, но вынудить компонент обновиться, надо дописать им в update это:
+```js
+// Item-details.js
+componentDidUpdate(prevProps) {
+  if (this.props.itemId !== prevProps.itemId || 
+      this.props.getData !== prevProps.getData ||
+      this.props.getImageUrl !== prevProps.getImageUrl) {
+    this.updateItem();
+  }
+}
+```
+
+Код сверху будет обновлять компонент, если новая функция получения данных getData или новая функция получения изображения getImageUrl не соответствуют прежним.
+
+Компонент высшего порядка в With-data.js сейчас работает только с методом componentDidMount. Надо дописать обновления. Весь код из didMount выносится в функцию update, которая вызывается в двух методах жизненного цикла:
+```js
+// With-data.js
+
+update() {
+  this.props.getData()
+    .then((data) => {
+      this.setState({ data })
+    });
+}
+
+componentDidMount() {
+  this.update();
+}
+
+componentDidUpdate(prevProps) {
+  if (this.props.getData !== prevProps.getData) {
+    this.update();
+  }
+}
+```
+
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
+```js
+```
+
 ```js
 ```
 

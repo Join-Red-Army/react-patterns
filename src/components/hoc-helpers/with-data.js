@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import Spinner from '../spinner';
-import ErrorIndicator from '../error-indicator';
 
 const withData = (View) => {
   return class extends Component {
@@ -8,12 +7,20 @@ const withData = (View) => {
     state = { data: null };
 
     componentDidMount() {
+      this.update();
+    }
+
+    componentDidUpdate(prevProps) {
+      if (this.props.getData !== prevProps.getData) {
+        this.update();
+      }
+    }
+
+    update() {
       this.props.getData()
         .then((data) => {
-          this.setState({
-            data
-          });
-      });
+          this.setState({ data })
+        });
     }
 
     render() {
