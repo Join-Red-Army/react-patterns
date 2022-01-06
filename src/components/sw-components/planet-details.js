@@ -6,7 +6,7 @@ import { withSwapiService } from '../hoc-helpers';
 const PlanetDetails = (props) => {
   return (
     <ItemDetails {...props}>
-      <Record field='popelation' label='Population' />
+      <Record field='population' label='Population' />
       <Record field='diameter' label='Diameter' />
     </ItemDetails>
   );

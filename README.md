@@ -1673,6 +1673,13 @@ export { PersonList, PlanetList, StarshipList };
 onServiceChange
 При переключении надо знать предыдущее значение state чтобы знать, на что переключиться. Поэтому в setState передаётся функция.
 ```js
+// Header.js
+const Header = ({ onServiceChange }) => {
+  return (
+    ...
+    <button onClick={onServiceChange} > Change Service </button>
+
+
 // App.js
 state = {
   showRandomPlanet: true,
@@ -1729,9 +1736,57 @@ componentDidUpdate(prevProps) {
 }
 ```
 
+## Рефакторинг компонентов высшего порядка
+Лишние импорты и поля класса в app.js удаляются.
+Директория People-page удаляется, т.к. нингде не используется.
+Создаётся новая директория pages.
 
+Ранее в App использовались Row, StarshipDetails, StarshipsList и т.д., но теперь их заменяют соответствующие компоненты pages:
 ```js
+// People-page.js
+import React, { Component } from 'react';
+import { PersonDetails, PersonList } from '../sw-components';
+import Row from '../row';
+
+
+export default class PeoplePage extends Component {
+
+  state = {
+    selectedItem: null
+  };
+
+  onItemSelected = (selectedItem) => {
+    this.setState({ selectedItem });
+  };
+
+  render() {
+    const { selectedItem } = this.state;
+
+    return (
+      <Row 
+        left={<PersonList onItemSelected={this.onItemSelected} />}
+        right={<PersonDetails itemId={selectedItem} />}
+      />
+    );
+  };
+
+};
+
+
+// App.js
+// Было
+<Row 
+  left={<StarshipList />}
+  right={<StarshipDetails itemId={9} />}
+/>
+
+// Стало
+<PeoplePage />
+<StarshipsPage />
+<PlanetsPage />
 ```
+
++ правки в with-data.js
 
 ```js
 ```
